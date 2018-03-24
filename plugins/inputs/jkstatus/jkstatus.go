@@ -12,47 +12,49 @@ import (
 	"github.com/influxdata/telegraf/plugins/inputs"
 )
 
-type JKStatusStatus struct {
-	Server    JKStatusServer    `xml:"jk:server"`
-	Balancers JKStatusBalancers `xml:"jk:balancers"`
+type Status struct {
+	XMLName   xml.Name  `xml:"http://jkstatus.apache.org status">`
+	Server    Server    `xml:"server"`
+	Balancers Balancers `xml:"balancers"`
 }
 
-type JKStatusServer struct {
+type Server struct {
 	Name string `xml:"name,attr"`
 	Port int    `xml:"port,attr"`
 }
 
-type JKStatusBalancers struct {
-	Balancers []JKStatusBalancer
+type Balancers struct {
+	Count     int        `xml:"count,attr"`
+	Balancers []Balancer `xml:"balancer"`
 }
 
-type JKStatusBalancer struct {
-	Name                 string           `xml:"name,attr"`
-	Type                 string           `xml:"type,attr"`
-	StickySession        bool             `xml:"sticky_session,attr"`
-	StickySessionForce   bool             `xml:"sticky_session_force,attr"`
-	Retries              int              `xml:"retries,attr"`
-	RecoverTime          int              `xml:"recover_time,attr"`
-	ErrorEscalationTime  int              `xml:"error_escalation_time,attr"`
-	MaxReplyTimeouts     int              `xml:"max_reply_timeouts,attr"`
-	Method               string           `xml:"method,attr"`
-	Lock                 string           `xml:"lock,attr"`
-	MemberCount          int              `xml:"member_count,attr"`
-	Good                 int              `xml:"good,attr"`
-	Degraded             int              `xml:"degraded,attr"`
-	Bad                  int              `xml:"bad,attr"`
-	Busy                 int              `xml:"busy,attr"`
-	MaxBusy              int              `xml:"max_busy,attr"`
-	MapCount             int              `xml:"map_count,attr"`
-	TimeToMaintenanceMin int64            `xml:"time_to_maintenance_min,attr"`
-	TimeToMaintenanceMax int64            `xml:"time_to_maintenance_max,attr"`
-	LastResetAt          int64            `xml:"last_reset_at,attr"`
-	LastResetAgo         int64            `xml:"last_reset_ago,attr"`
-	StatusMembers        []JKStatusMember `xml:"jk:member"`
-	Maps                 []JKStatusMap    `xml:"jk:map"`
+type Balancer struct {
+	Name                 string   `xml:"name,attr"`
+	Type                 string   `xml:"type,attr"`
+	StickySession        bool     `xml:"sticky_session,attr"`
+	StickySessionForce   bool     `xml:"sticky_session_force,attr"`
+	Retries              int      `xml:"retries,attr"`
+	RecoverTime          int      `xml:"recover_time,attr"`
+	ErrorEscalationTime  int      `xml:"error_escalation_time,attr"`
+	MaxReplyTimeouts     int      `xml:"max_reply_timeouts,attr"`
+	Method               string   `xml:"method,attr"`
+	Lock                 string   `xml:"lock,attr"`
+	MemberCount          int      `xml:"member_count,attr"`
+	Good                 int      `xml:"good,attr"`
+	Degraded             int      `xml:"degraded,attr"`
+	Bad                  int      `xml:"bad,attr"`
+	Busy                 int      `xml:"busy,attr"`
+	MaxBusy              int      `xml:"max_busy,attr"`
+	MapCount             int      `xml:"map_count,attr"`
+	TimeToMaintenanceMin int64    `xml:"time_to_maintenance_min,attr"`
+	TimeToMaintenanceMax int64    `xml:"time_to_maintenance_max,attr"`
+	LastResetAt          int64    `xml:"last_reset_at,attr"`
+	LastResetAgo         int64    `xml:"last_reset_ago,attr"`
+	StatusMembers        []Member `xml:"member"`
+	Maps                 []Map    `xml:"map"`
 }
 
-type JKStatusMember struct {
+type Member struct {
 	Name                   string `xml:"name,attr"`
 	Type                   string `xml:"type,attr"`
 	Host                   string `xml:"host,attr"`
@@ -92,7 +94,7 @@ type JKStatusMember struct {
 	LastResetAgo           int64  `xml:"last_reset_ago,attr"`
 }
 
-type JKStatusMap struct {
+type Map struct {
 	ID              int    `xml:"id,attr"`
 	Server          string `xml:"server,attr"`
 	Uri             string `xml:"uri,attr"`
@@ -183,9 +185,8 @@ func (s *JKStatus) Gather(acc telegraf.Accumulator) error {
 			resp.StatusCode, s.URL)
 	}
 
-	var status JKStatusStatus
+	var status Status
 	xml.NewDecoder(resp.Body).Decode(&status)
-	fmt.Printf("%#v\n", status)
 
 	jkss := map[string]interface{}{
 		"name": status.Server.Name,
@@ -208,32 +209,6 @@ func (s *JKStatus) Gather(acc telegraf.Accumulator) error {
 	//		}
 	//
 	//		acc.AddFields("jkstatus_jvm_memorypool", tcmpFields, tcmpTags)
-	//	}
-	//
-	//	// add jkstatus_connector measurements
-	//	for _, c := range status.JKStatusStatusConnectors {
-	//		name, err := strconv.Unquote(c.Name)
-	//		if err != nil {
-	//			name = c.Name
-	//		}
-	//
-	//		tccTags := map[string]string{
-	//			"name": name,
-	//		}
-	//
-	//		tccFields := map[string]interface{}{
-	//			"max_threads":          c.ThreadInfo.MaxThreads,
-	//			"current_thread_count": c.ThreadInfo.CurrentThreadCount,
-	//			"current_threads_busy": c.ThreadInfo.CurrentThreadsBusy,
-	//			"max_time":             c.RequestInfo.MaxTime,
-	//			"processing_time":      c.RequestInfo.ProcessingTime,
-	//			"request_count":        c.RequestInfo.RequestCount,
-	//			"error_count":          c.RequestInfo.ErrorCount,
-	//			"bytes_received":       c.RequestInfo.BytesReceived,
-	//			"bytes_sent":           c.RequestInfo.BytesSent,
-	//		}
-	//
-	//		acc.AddFields("jkstatus_connector", tccFields, tccTags)
 	//	}
 
 	return nil
