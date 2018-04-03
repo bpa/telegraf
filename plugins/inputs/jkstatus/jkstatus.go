@@ -14,13 +14,7 @@ import (
 
 type Status struct {
 	XMLName   xml.Name  `xml:"http://jkstatus.apache.org status">`
-	Server    Server    `xml:"server"`
 	Balancers Balancers `xml:"balancers"`
-}
-
-type Server struct {
-	Name string `xml:"name,attr"`
-	Port int    `xml:"port,attr"`
 }
 
 type Balancers struct {
@@ -46,12 +40,11 @@ type Balancer struct {
 	Busy                 int      `xml:"busy,attr"`
 	MaxBusy              int      `xml:"max_busy,attr"`
 	MapCount             int      `xml:"map_count,attr"`
-	TimeToMaintenanceMin int64    `xml:"time_to_maintenance_min,attr"`
-	TimeToMaintenanceMax int64    `xml:"time_to_maintenance_max,attr"`
+	TimeToMaintenanceMin int      `xml:"time_to_maintenance_min,attr"`
+	TimeToMaintenanceMax int      `xml:"time_to_maintenance_max,attr"`
 	LastResetAt          int64    `xml:"last_reset_at,attr"`
 	LastResetAgo         int64    `xml:"last_reset_ago,attr"`
-	StatusMembers        []Member `xml:"member"`
-	Maps                 []Map    `xml:"map"`
+	Members              []Member `xml:"member"`
 }
 
 type Member struct {
@@ -88,26 +81,10 @@ type Member struct {
 	Busy                   int    `xml:"busy,attr"`
 	MaxBusy                int    `xml:"max_busy,attr"`
 	Connected              int    `xml:"connected,attr"`
-	TimeToRecoverMin       int64  `xml:"time_to_recover_min,attr"`
-	TimeToRecoverMax       int64  `xml:"time_to_recover_max,attr"`
+	TimeToRecoverMin       int    `xml:"time_to_recover_min,attr"`
+	TimeToRecoverMax       int    `xml:"time_to_recover_max,attr"`
 	LastResetAt            int64  `xml:"last_reset_at,attr"`
 	LastResetAgo           int64  `xml:"last_reset_ago,attr"`
-}
-
-type Map struct {
-	ID              int    `xml:"id,attr"`
-	Server          string `xml:"server,attr"`
-	Uri             string `xml:"uri,attr"`
-	Type            string `xml:"type,attr"`
-	Source          string `xml:"source,attr"`
-	ReplyTimeout    int    `xml:"reply_timeout,attr"`
-	StickyIgnore    int    `xml:"sticky_ignore,attr"`
-	Stateless       int    `xml:"stateless,attr"`
-	FailOnStatus    int    `xml:"fail_on_status,attr"`
-	Active          int    `xml:"active,attr"`
-	Disabled        int    `xml:"disabled,attr"`
-	Stopped         int    `xml:"stopped,attr"`
-	UseServerErrors int    `xml:"use_server_errors,attr"`
 }
 
 type JKStatus struct {
@@ -188,28 +165,85 @@ func (s *JKStatus) Gather(acc telegraf.Accumulator) error {
 	var status Status
 	xml.NewDecoder(resp.Body).Decode(&status)
 
-	jkss := map[string]interface{}{
-		"name": status.Server.Name,
-		"port": status.Server.Port,
-	}
-	acc.AddFields("jkstatus", jkss, nil)
+	// add jkstatus_balancer measurements
+	for _, b := range status.Balancers.Balancers {
+		balancerTags := map[string]string{
+			"name": b.Name,
+		}
 
-	//	// add jkstatus_jvm_memorypool measurements
-	//	for _, mp := range status.JKStatusStatusJvm.JvmMemoryPools {
-	//		tcmpTags := map[string]string{
-	//			"name": mp.Name,
-	//			"type": mp.Type,
-	//		}
-	//
-	//		tcmpFields := map[string]interface{}{
-	//			"init":      mp.UsageInit,
-	//			"committed": mp.UsageCommitted,
-	//			"max":       mp.UsageMax,
-	//			"used":      mp.UsageUsed,
-	//		}
-	//
-	//		acc.AddFields("jkstatus_jvm_memorypool", tcmpFields, tcmpTags)
-	//	}
+		balancerFields := map[string]interface{}{
+			"type":                    b.Type,
+			"sticky_session":          b.StickySession,
+			"sticky_session_force":    b.StickySessionForce,
+			"retries":                 b.Retries,
+			"recover_time":            b.RecoverTime,
+			"error_escalation_time":   b.ErrorEscalationTime,
+			"max_reply_timeouts":      b.MaxReplyTimeouts,
+			"method":                  b.Method,
+			"lock":                    b.Lock,
+			"member_count":            b.MemberCount,
+			"good":                    b.Good,
+			"degraded":                b.Degraded,
+			"bad":                     b.Bad,
+			"busy":                    b.Busy,
+			"max_busy":                b.MaxBusy,
+			"map_count":               b.MapCount,
+			"time_to_maintenance_min": b.TimeToMaintenanceMin,
+			"time_to_maintenance_max": b.TimeToMaintenanceMax,
+			"last_reset_at":           b.LastResetAt,
+			"last_reset_ago":          b.LastResetAgo,
+		}
+
+		acc.AddFields("jkstatus_balancer", balancerFields, balancerTags)
+
+		for _, m := range b.Members {
+			memberTags := map[string]string{
+				"balancer": b.Name,
+				"name":     m.Name,
+			}
+
+			memberFields := map[string]interface{}{
+				"type":                     m.Type,
+				"host":                     m.Host,
+				"port":                     m.Port,
+				"address":                  m.Address,
+				"connection_pool_timeout":  m.ConnectionPoolTimeout,
+				"ping_timeout":             m.PingTimeout,
+				"connect_timeout":          m.ConnectTimeout,
+				"prepost_timeout":          m.PrepostTimeout,
+				"reply_timeout":            m.ReplyTimeout,
+				"connection_ping_interval": m.ConnectionPingInterval,
+				"retries":                  m.Retries,
+				"recovery_options":         m.RecoveryOptions,
+				"max_packet_size":          m.MaxPacketSize,
+				"activation":               m.Activation,
+				"lbfactor":                 m.LbFactor,
+				"route":                    m.Route,
+				"redirect":                 m.Redirect,
+				"domain":                   m.Domain,
+				"distance":                 m.Distance,
+				"state":                    m.State,
+				"lbmult":                   m.LbMult,
+				"lbvalue":                  m.LbValue,
+				"elected":                  m.Elected,
+				"sessions":                 m.Sessions,
+				"errors":                   m.Errors,
+				"client_errors":            m.ClientErrors,
+				"reply_timeouts":           m.ReplyTimeouts,
+				"transferred":              m.Transferred,
+				"read":                     m.Read,
+				"busy":                     m.Busy,
+				"max_busy":                 m.MaxBusy,
+				"connected":                m.Connected,
+				"time_to_recover_min":      m.TimeToRecoverMin,
+				"time_to_recover_max":      m.TimeToRecoverMax,
+				"last_reset_at":            m.LastResetAt,
+				"last_reset_ago":           m.LastResetAgo,
+			}
+
+			acc.AddFields("jkstatus_member", memberFields, memberTags)
+		}
+	}
 
 	return nil
 }

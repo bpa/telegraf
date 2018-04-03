@@ -44,27 +44,124 @@ func TestHTTPJKStatus(t *testing.T) {
 	err := tc.Gather(&acc)
 	require.NoError(t, err)
 
-	// jkstatus_server
-	jkServerFields := map[string]interface{}{
-		"name": "my-server",
-		"port": 8084,
+	jkBalancerTags := map[string]string{
+		"name": "balancer",
 	}
-	acc.AssertContainsFields(t, "jkstatus", jkServerFields)
 
-	//	// jkstatus_connector
-	//	connectorFields := map[string]interface{}{
-	//		"max_threads":          int64(200),
-	//		"current_thread_count": int64(5),
-	//		"current_threads_busy": int64(1),
-	//		"max_time":             int(68),
-	//		"processing_time":      int(88),
-	//		"request_count":        int(2),
-	//		"error_count":          int(1),
-	//		"bytes_received":       int64(0),
-	//		"bytes_sent":           int64(9286),
-	//	}
-	//	connectorTags := map[string]string{
-	//		"name": "http-apr-8080",
-	//	}
-	//	acc.AssertContainsTaggedFields(t, "jkstatus_connector", connectorFields, connectorTags)
+	jkBalancerFields := map[string]interface{}{
+		"type":                    "lb",
+		"sticky_session":          true,
+		"sticky_session_force":    false,
+		"retries":                 2,
+		"recover_time":            60,
+		"error_escalation_time":   30,
+		"max_reply_timeouts":      0,
+		"method":                  "Busyness",
+		"lock":                    "Optimistic",
+		"member_count":            2,
+		"good":                    2,
+		"degraded":                0,
+		"bad":                     0,
+		"busy":                    1,
+		"max_busy":                18,
+		"map_count":               2,
+		"time_to_maintenance_min": 47,
+		"time_to_maintenance_max": 109,
+		"last_reset_at":           int64(1521756001),
+		"last_reset_ago":          int64(1286),
+	}
+
+	acc.AssertContainsTaggedFields(t, "jkstatus_balancer", jkBalancerFields, jkBalancerTags)
+
+	jkMemberTags := map[string]string{
+		"balancer": "balancer",
+		"name":     "myserver1",
+	}
+
+	jkMemberFields := map[string]interface{}{
+		"type":                     "ajp13",
+		"host":                     "my-server1",
+		"port":                     8009,
+		"address":                  "10.1.1.1:8009",
+		"connection_pool_timeout":  0,
+		"ping_timeout":             10000,
+		"connect_timeout":          10000,
+		"prepost_timeout":          10000,
+		"reply_timeout":            0,
+		"connection_ping_interval": 100,
+		"retries":                  2,
+		"recovery_options":         0,
+		"max_packet_size":          16384,
+		"activation":               "ACT",
+		"lbfactor":                 10,
+		"route":                    "myserver1",
+		"redirect":                 "",
+		"domain":                   "",
+		"distance":                 0,
+		"state":                    "OK",
+		"lbmult":                   1,
+		"lbvalue":                  0,
+		"elected":                  4534,
+		"sessions":                 4534,
+		"errors":                   0,
+		"client_errors":            0,
+		"reply_timeouts":           0,
+		"transferred":              int64(3237735),
+		"read":                     int64(92505649),
+		"busy":                     0,
+		"max_busy":                 9,
+		"connected":                342,
+		"time_to_recover_min":      0,
+		"time_to_recover_max":      0,
+		"last_reset_at":            int64(1521756001),
+		"last_reset_ago":           int64(1286),
+	}
+
+	acc.AssertContainsTaggedFields(t, "jkstatus_member", jkMemberFields, jkMemberTags)
+
+	jkMemberTags = map[string]string{
+		"balancer": "balancer",
+		"name":     "myserver2",
+	}
+
+	jkMemberFields = map[string]interface{}{
+		"type":                     "ajp13",
+		"host":                     "my-server2",
+		"port":                     8009,
+		"address":                  "10.1.1.2:8009",
+		"connection_pool_timeout":  0,
+		"ping_timeout":             10000,
+		"connect_timeout":          10000,
+		"prepost_timeout":          10000,
+		"reply_timeout":            0,
+		"connection_ping_interval": 100,
+		"retries":                  2,
+		"recovery_options":         0,
+		"max_packet_size":          16384,
+		"activation":               "ACT",
+		"lbfactor":                 10,
+		"route":                    "myserver2",
+		"redirect":                 "",
+		"domain":                   "",
+		"distance":                 0,
+		"state":                    "OK",
+		"lbmult":                   1,
+		"lbvalue":                  1,
+		"elected":                  4651,
+		"sessions":                 4651,
+		"errors":                   0,
+		"client_errors":            0,
+		"reply_timeouts":           0,
+		"transferred":              int64(3482618),
+		"read":                     int64(130672970),
+		"busy":                     1,
+		"max_busy":                 9,
+		"connected":                336,
+		"time_to_recover_min":      0,
+		"time_to_recover_max":      0,
+		"last_reset_at":            int64(1521756001),
+		"last_reset_ago":           int64(1286),
+	}
+
+	acc.AssertContainsTaggedFields(t, "jkstatus_member", jkMemberFields, jkMemberTags)
 }
